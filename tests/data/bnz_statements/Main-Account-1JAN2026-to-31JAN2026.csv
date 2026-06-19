@@ -1,0 +1,4 @@
+Date,Amount,Payee,Particulars,Code,Reference,Tran Type,This Party Account,Other Party Account,Serial,Transaction Code,Batch Number,Originating Bank/Branch,Processed Date
+01/01/26,-25.00,PAK N SAVE,TEST CITY,000001,,POS,11-1111-1111111-00,---,,"00",1001,"11-1111",01/01/26
+02/01/26,-100.00,Savings,,,INTERNET XFR,FT,11-1111-1111111-00,22-2222-2222222-00,,"00",0000,"11-1111",02/01/26
+03/01/26,11.50,Friend Share,Software split,,,AP,11-1111-1111111-00,33-3333-3333333-00,,"50",0000,"33-3333",03/01/26
