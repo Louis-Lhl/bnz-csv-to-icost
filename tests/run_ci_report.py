@@ -22,6 +22,7 @@ COVERAGE_NOTES = [
     "Filters transactions to the requested month.",
     "Detects matching internal transfers and exports one iCost transfer row.",
     "Classifies known merchants and local rule matches.",
+    "Keeps AI classification opt-in and limited to Payee-only merchant strings.",
     "Writes iCost-compatible XLSX headers and shared strings.",
     "Writes an unknown workbook when classification is unclear.",
 ]

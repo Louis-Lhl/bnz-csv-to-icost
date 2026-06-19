@@ -72,132 +72,16 @@ class Rule:
         return self.match_text.upper() in text
 
 
-DEFAULT_RULES = [
-    Rule("AUCKLAND TRANSPORT", Classification("支出", "交通")),
-    Rule("AT PUBLIC TRANSPORT", Classification("支出", "交通")),
-    Rule("SNAPPER SERVICES", Classification("支出", "交通")),
-    Rule("DIDI_NZ", Classification("支出", "交通")),
-    Rule("UBER", Classification("支出", "交通")),
-    Rule("AIRPORT PARKING", Classification("支出", "交通")),
-    Rule("PAK N SAVE", Classification("支出", "生活费")),
-    Rule("WOOLWORTHS", Classification("支出", "生活费")),
-    Rule("NEW WORLD", Classification("支出", "生活费")),
-    Rule("FOUR SQUARE", Classification("支出", "生活费")),
-    Rule("DH SUPERMARKET", Classification("支出", "生活费")),
-    Rule("GOLDEN APPLE", Classification("支出", "生活费")),
-    Rule("YI CART", Classification("支出", "生活费")),
-    Rule("PRIME FOODS", Classification("支出", "生活费")),
-    Rule("POKENO BACON", Classification("支出", "生活费")),
-    Rule("DA HUA SUPERMARK", Classification("支出", "生活费")),
-    Rule("WANG MART", Classification("支出", "生活费")),
-    Rule("CHOWON BUTCHERY", Classification("支出", "生活费")),
-    Rule("LINK VEGE", Classification("支出", "生活费")),
-    Rule("FARRO FRESH", Classification("支出", "生活费")),
-    Rule("SIMPLY FRESH", Classification("支出", "生活费")),
-    Rule("APPLE.COM/BILL", Classification("支出", "应用软件")),
-    Rule("GITHUB", Classification("支出", "应用软件")),
-    Rule("OPENAI", Classification("支出", "应用软件")),
-    Rule("GOOGLE SURFSHARK", Classification("支出", "应用软件")),
-    Rule("THEVERGE.COM", Classification("支出", "应用软件")),
-    Rule("ONE NZ", Classification("支出", "通讯")),
-    Rule("POWERSHOP", Classification("支出", "住房", "水电费")),
-    Rule("MOBIL", Classification("支出", "汽车")),
-    Rule("BP CONNECT", Classification("支出", "汽车")),
-    Rule("Z ENERGY", Classification("支出", "汽车")),
-    Rule("Z SUNNYBRAE", Classification("支出", "汽车")),
-    Rule("NZTA", Classification("支出", "汽车")),
-    Rule("NZ TRANSPORT AGENCY", Classification("支出", "汽车")),
-    Rule("AA INSURANCE", Classification("支出", "汽车")),
-    Rule("L & Y MOTORS", Classification("支出", "汽车")),
-    Rule("CHEMIST WAREHOUSE", Classification("支出", "医疗")),
-    Rule("FULL HEALTH", Classification("支出", "医疗")),
-    Rule("CITYFITNESS", Classification("支出", "运动")),
-    Rule("AHSC BADMINTON", Classification("支出", "运动")),
-    Rule("REBEL", Classification("支出", "运动")),
-    Rule("8 BILLIARDS", Classification("支出", "运动")),
-    Rule("ANIMATES", Classification("支出", "宠物")),
-    Rule("BRISCOES", Classification("支出", "日用")),
-    Rule("BUNNINGS", Classification("支出", "日用")),
-    Rule("MITRE 10", Classification("支出", "日用")),
-    Rule("THE WAREHOUSE", Classification("支出", "日用")),
-    Rule("IKEA", Classification("支出", "日用")),
-    Rule("KINGS PLANT BARN", Classification("支出", "日用")),
-    Rule("3 DOLLAR JAPAN", Classification("支出", "日用")),
-    Rule("NOEL LEEMING", Classification("支出", "数码")),
-    Rule("PB TECHNOLOGIES", Classification("支出", "数码")),
-    Rule("HARVEYNORMA", Classification("支出", "数码")),
-    Rule("HIKOCO", Classification("支出", "美妆")),
-    Rule("MECCA", Classification("支出", "美妆")),
-    Rule("DAIKOKU COSMETICS", Classification("支出", "美妆")),
-    Rule("HAIR SALON", Classification("支出", "护肤")),
-    Rule("HAIR CUT", Classification("支出", "护肤")),
-    Rule("THE BOTTLE-O", Classification("支出", "烟酒")),
-    Rule("BLACK BULL LIQUOR", Classification("支出", "烟酒")),
-    Rule("GARAGE PROJECT", Classification("支出", "烟酒")),
-    Rule("AFTERPAY", Classification("支出", "购物")),
-    Rule("DEPT OF INTERNAL AFF", Classification("支出", "其他")),
-    Rule("EVENT CINEMAS", Classification("支出", "娱乐")),
-    Rule("UGG EXPRESS", Classification("支出", "服饰")),
-    Rule("AIR NEW ZEALAND", Classification("支出", "旅游")),
-    Rule("AELIA DUTY FREE", Classification("支出", "旅游")),
-    Rule("CATHEDRAL COVE", Classification("支出", "旅游")),
-    Rule("I.R.D.", Classification("收入", "退税"), direction="收入"),
-    Rule("GROSS CR INTEREST", Classification("收入", "投资"), direction="收入"),
-    Rule("COCA-COLA EP NZ", Classification("支出", "生活费", "零食")),
-]
-
-FOOD_RULES = [
-    "AZABU",
-    "BAKERY",
-    "BRILLVIC LIMITED",
-    "BURGER",
-    "CAFE",
-    "COFFEE",
-    "CINNABON",
-    "CHUBBY BOY",
-    "DAILY BREAD",
-    "DWEJI",
-    "GREAT TONG GI",
-    "H&H RETAILING",
-    "HELLO MISTER",
-    "ITALIAN IN THE VILLA",
-    "KFC",
-    "KITCHEN",
-    "KHAO GAENG",
-    "LA TEXICAN",
-    "LUKES KITCHEN",
-    "MAD POT",
-    "MEDI DELI",
-    "MCDONALD",
-    "MIGHTY HOTDOG",
-    "MOJO THE SUMMIT",
-    "NAVAT",
-    "PHO",
-    "RESTAURANT",
-    "RINGAWERA",
-    "SAIGON PHO",
-    "SUSHI",
-    "TAIKIN",
-    "TAKAPUNA BEACHSIDE",
-    "TB AKL AIRPORT",
-    "TB NORTHCOTE",
-    "TASTE OF INDIA",
-    "TOASTED ESPRESSO",
-    "VIBE CAFE",
-    "VICKIES",
-    "WING WONG",
-]
-DEFAULT_RULES.extend(Rule(text, Classification("支出", "生活费", "外食"), priority=80) for text in FOOD_RULES)
-
-
 class RuleEngine:
     def __init__(self, rules: list[Rule]) -> None:
         self.rules = sorted(rules, key=lambda rule: rule.priority, reverse=True)
 
     @classmethod
-    def load(cls, local_rules_file: Path) -> "RuleEngine":
-        rules = list(DEFAULT_RULES)
-        rules.extend(load_local_rules(local_rules_file))
+    def load(cls, local_rules_file: Path, default_rules_file: Path | None = None) -> "RuleEngine":
+        rules: list[Rule] = []
+        if default_rules_file is not None:
+            rules.extend(load_rule_csv(default_rules_file, default_priority=100))
+        rules.extend(load_rule_csv(local_rules_file, default_priority=200))
         LOGGER.debug("Loaded %d classification rules", len(rules))
         return cls(rules)
 
@@ -216,6 +100,10 @@ class RuleEngine:
 
 
 def load_local_rules(path: Path) -> list[Rule]:
+    return load_rule_csv(path, default_priority=200)
+
+
+def load_rule_csv(path: Path, default_priority: int) -> list[Rule]:
     if not path.exists():
         return []
     rules: list[Rule] = []
@@ -241,7 +129,7 @@ def load_local_rules(path: Path) -> list[Rule]:
                 Rule(
                     match_text=match_text,
                     classification=classification,
-                    priority=int(row.get("优先级") or 200),
+                    priority=int(row.get("优先级") or default_priority),
                     direction=str(row.get("BNZ方向") or "").strip(),
                     bank_type=str(row.get("BNZ类型") or "").strip().upper(),
                     amount=Decimal(amount_text) if amount_text else None,

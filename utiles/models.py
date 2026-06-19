@@ -33,6 +33,7 @@ class Transaction:
     bank_type: str
     amount: Decimal
     direction: str
+    payee: str = ""
     this_account: str = ""
     other_account: str = ""
     transaction_code: str = ""

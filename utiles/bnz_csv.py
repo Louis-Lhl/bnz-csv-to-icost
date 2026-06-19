@@ -90,6 +90,7 @@ def parse_csv_transactions(path: Path, output_month: str, account_resolver: Acco
                     bank_type=TRAN_TYPE_MAP.get(bank_type, bank_type),
                     amount=abs(amount),
                     direction="收入" if amount > 0 else "支出",
+                    payee=str(row.get("Payee") or "").strip(),
                     this_account=str(row.get("This Party Account") or "").strip(),
                     other_account=str(row.get("Other Party Account") or "").strip(),
                     transaction_code=str(row.get("Transaction Code") or "").strip(),

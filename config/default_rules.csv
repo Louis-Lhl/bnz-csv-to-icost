@@ -1,0 +1,18 @@
+match_text,类型,一级分类,二级分类,账户2,备注规则,BNZ方向,BNZ类型,金额,优先级
+PAK N SAVE,支出,生活费,,,,,,,100
+WOOLWORTHS,支出,生活费,,,,,,,100
+NEW WORLD,支出,生活费,,,,,,,100
+KFC,支出,生活费,外食,,,,,,100
+MCDONALD,支出,生活费,外食,,,,,,100
+UBER,支出,交通,,,,,,,100
+AUCKLAND TRANSPORT,支出,交通,,,,,,,100
+APPLE.COM/BILL,支出,应用软件,,,,,,,100
+GITHUB,支出,应用软件,,,,,,,100
+OPENAI,支出,应用软件,,,,,,,100
+ONE NZ,支出,通讯,,,,,,,100
+POWERSHOP,支出,住房,水电费,,,,,,100
+MOBIL,支出,汽车,,,,,,,100
+BP CONNECT,支出,汽车,,,,,,,100
+CHEMIST WAREHOUSE,支出,医疗,,,,,,,100
+THE WAREHOUSE,支出,日用,,,,,,,100
+IKEA,支出,日用,,,,,,,100

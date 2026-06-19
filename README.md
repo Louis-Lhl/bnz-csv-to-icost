@@ -13,6 +13,7 @@ utiles/                      # Converter, parsing, classification, workbook help
 tests/                       # CI integration tests
 tests/data/                  # Synthetic test data only
 config/                      # Optional local config, ignored by Git
+config/default_rules.csv     # Public default merchant rules
 output/                      # Generated iCost files, ignored by Git
 README.md
 .gitignore
@@ -51,6 +52,14 @@ Fill `*_unknown.xlsx` when classification is unclear, then rerun the same comman
 output/csv_manual_classifications.xlsx
 ```
 
+## Classification Rules
+
+The converter loads rules in this order:
+
+1. `config/default_rules.csv`: public default merchant examples that are safe to commit, such as `PAK N SAVE`, `KFC`, `GITHUB`, and `WOOLWORTHS`.
+2. `config/local_rules.csv`: private local rules learned from your own corrections or AI suggestions. This file is ignored by Git.
+3. Manual classifications persisted from filled unknown workbooks in `output/csv_manual_classifications.xlsx`.
+
 ## Optional Local Config
 
 Local config files are ignored by Git because they can contain account names or personal rules.
@@ -71,6 +80,32 @@ EXAMPLE SOFTWARE SHARE,收入,应用软件,,,收入,AP,11.50,200
 ```
 
 Do not commit real account numbers, names, or bank statements.
+
+## Optional AI Classification
+
+AI classification is disabled by default. Enable it explicitly:
+
+```bash
+python convert_bnz_csv_to_icost.py 2026-06 --ai-classify
+```
+
+Privacy boundary: the AI request only sends unique values from the BNZ `Payee` column for transactions that could not already be classified. It does not send full CSV rows, dates, amounts, account numbers, references, notes, balances, or generated workbooks. Likely personal names and ambiguous payees are skipped locally and stay in the unknown workbook.
+
+Create a local `.env` from the template:
+
+```bash
+cp .env.example .env
+```
+
+Then set:
+
+```text
+OPENAI_API_KEY=your_api_key_here
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_BASE_URL=https://api.openai.com/v1
+```
+
+`.env` is ignored by Git. For a single-user local tool, `.env` is practical and auditable. A more secure option is storing the key in the macOS Keychain or exporting `OPENAI_API_KEY` only for the current shell session; that avoids a long-lived plaintext key file, but it is less convenient for non-technical users. Do not commit API keys.
 
 ## Tests
 

@@ -29,6 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input-dir", default="bnz_statements", help="Directory containing BNZ CSV files.")
     parser.add_argument("--output-dir", default="output", help="Directory for generated iCost workbooks.")
     parser.add_argument("--config-dir", default="config", help="Directory for local ignored account/rule configuration.")
+    parser.add_argument("--ai-classify", action="store_true", help="Use AI to classify unknown merchant payees and save local rules.")
     parser.add_argument("--debug", action="store_true", help="Enable debug logs.")
     return parser.parse_args()
 
@@ -53,6 +54,7 @@ def main() -> None:
         output_dir=Path(args.output_dir),
         config_dir=Path(args.config_dir),
         output_month=month,
+        ai_classify=args.ai_classify,
     )
     output_file, unknown_file, row_count, unknown_count = converter.run()
     print(f"Wrote {output_file} ({row_count} rows)")

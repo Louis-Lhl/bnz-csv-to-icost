@@ -5,6 +5,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
+from .ai_classifier import PayeeAIClassifier
 from .bnz_csv import AccountResolver, csv_paths, parse_csv_transactions
 from .models import Classification, transaction_key
 from .rules import RuleEngine, read_filled_unknown_workbook, read_manual_workbook
@@ -23,6 +24,7 @@ class BnzCsvToIcostConverter:
         output_dir: Path,
         config_dir: Path,
         output_month: str,
+        ai_classify: bool = False,
     ) -> None:
         self.input_dir = input_dir
         self.output_dir = output_dir
@@ -31,8 +33,11 @@ class BnzCsvToIcostConverter:
         self.output_file = output_dir / f"{output_month}.xlsx"
         self.unknown_file = output_dir / f"{output_month}_unknown.xlsx"
         self.manual_file = output_dir / "csv_manual_classifications.xlsx"
+        self.local_rules_file = config_dir / "local_rules.csv"
+        self.default_rules_file = config_dir / "default_rules.csv"
+        self.ai_classify = ai_classify
         self.account_resolver = AccountResolver.from_csv(config_dir / "accounts.csv")
-        self.rule_engine = RuleEngine.load(config_dir / "local_rules.csv")
+        self.rule_engine = RuleEngine.load(self.local_rules_file, self.default_rules_file)
 
     def run(self) -> tuple[Path, Path, int, int]:
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -47,6 +52,13 @@ class BnzCsvToIcostConverter:
             transactions.extend(parse_csv_transactions(path, self.output_month, self.account_resolver))
         mark_internal_transfers(transactions)
         LOGGER.info("Loaded %d transactions for %s", len(transactions), self.output_month)
+        if self.ai_classify:
+            added = PayeeAIClassifier(Path(".env"), self.local_rules_file).classify_and_save(
+                [tx.payee for tx in self._unknown_candidates(transactions, manual)]
+            )
+            if added:
+                LOGGER.info("Added %d AI classification rules to %s", added, self.local_rules_file)
+                self.rule_engine = RuleEngine.load(self.local_rules_file, self.default_rules_file)
 
         icost_rows: list[list[object]] = []
         unknown_rows: list[list[object]] = []
@@ -70,6 +82,21 @@ class BnzCsvToIcostConverter:
         write_icost_import(self.output_file, icost_rows)
         write_unknown(self.unknown_file, unknown_rows)
         return self.output_file, self.unknown_file, len(icost_rows), len(unknown_rows)
+
+    def _unknown_candidates(
+        self,
+        transactions: list,
+        manual: dict[tuple[str, int, str, str, str], Classification],
+    ) -> list:
+        candidates = []
+        for tx in transactions:
+            if should_export_transfer(tx) or tx.transfer_account:
+                continue
+            if manual.get(transaction_key(tx)) or self.rule_engine.classify(tx):
+                continue
+            candidates.append(tx)
+        LOGGER.debug("Prepared %d unknown transaction payees for optional AI classification", len(candidates))
+        return candidates
 
     def _persist_manual(self, manual: dict[tuple[str, int, str, str, str], Classification]) -> None:
         rows = [

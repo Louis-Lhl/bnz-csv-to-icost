@@ -8,7 +8,10 @@ from zipfile import ZipFile
 
 from openpyxl import load_workbook
 
+from utiles.ai_classifier import SuggestedRule, append_rules, likely_sensitive_payee
 from utiles.converter import BnzCsvToIcostConverter
+from utiles.models import Classification
+from utiles.rules import RuleEngine
 
 
 class ConverterIntegrationTest(unittest.TestCase):
@@ -47,6 +50,36 @@ class ConverterIntegrationTest(unittest.TestCase):
 
             unknown_workbook = load_workbook(unknown_file, data_only=True, read_only=True)
             self.assertEqual(unknown_workbook.active.max_row, 1)
+
+    def test_default_rules_are_loaded_from_csv(self) -> None:
+        rules = RuleEngine.load(
+            local_rules_file=Path("tests/data/config/missing_local_rules.csv"),
+            default_rules_file=Path("tests/data/config/default_rules.csv"),
+        )
+
+        self.assertTrue(any(rule.match_text == "PAK N SAVE" for rule in rules.rules))
+
+    def test_ai_rule_storage_and_privacy_filter(self) -> None:
+        self.assertTrue(likely_sensitive_payee("PERSON,NAME"))
+        self.assertTrue(likely_sensitive_payee("John Smith"))
+        self.assertFalse(likely_sensitive_payee("PAK N SAVE"))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            rules_file = Path(tmpdir) / "local_rules.csv"
+            added = append_rules(
+                rules_file,
+                [
+                    SuggestedRule(
+                        match_text="KFC",
+                        classification=Classification("支出", "生活费", "外食"),
+                        reason="known fast food merchant",
+                        confidence=0.95,
+                    )
+                ],
+            )
+
+            self.assertEqual(added, 1)
+            self.assertIn("KFC", rules_file.read_text(encoding="utf-8-sig"))
 
 
 if __name__ == "__main__":

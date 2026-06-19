@@ -14,6 +14,7 @@ output/**
 !output/.gitkeep
 icost_statements/**
 config/*.csv
+!config/default_rules.csv
 test-results/
 *.png
 *.xlsx
@@ -21,3 +22,4 @@ test-results/
 # Local environment
 .env
 .env.*
+!.env.example
