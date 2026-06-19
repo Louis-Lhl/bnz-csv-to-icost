@@ -59,8 +59,8 @@ Local config files are ignored by Git because they can contain account names or 
 
 ```csv
 filename_prefix,account_name
-Joint-Account,Joint Account
-Joint-Saving,Joint Saving
+Main-Account,Main Account
+Savings,Savings
 ```
 
 `config/local_rules.csv` adds personal or private classification rules:
