@@ -80,6 +80,14 @@ python -m unittest discover -s tests -p "test_*.py"
 
 The tests use synthetic CSV data under `tests/data/`; no personal bank data is required.
 
+GitHub Actions runs the same integration test suite through:
+
+```bash
+python tests/run_ci_report.py
+```
+
+Each CI run writes a readable test summary to the GitHub Actions run page and uploads `ci-test-report` as an artifact.
+
 ## Notes
 
 - Only BNZ CSV exports are supported.
