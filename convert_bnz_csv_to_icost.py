@@ -57,6 +57,9 @@ def main() -> None:
     except StatementCoverageError as error:
         print(f"ERROR: {error}", file=sys.stderr)
         raise SystemExit(2) from error
+    except RuntimeError as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        raise SystemExit(2) from error
     print(f"Wrote {output_file} ({row_count} rows)")
     print(f"Wrote {unknown_file} ({unknown_count} unknown rows)")
 

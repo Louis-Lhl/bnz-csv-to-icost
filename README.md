@@ -25,6 +25,12 @@ README.md
 python -m pip install -r requirements.txt
 ```
 
+On macOS, use `python3` if `python` is not available:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
 ## Usage
 
 Put BNZ CSV exports in `bnz_statements/`, then run:
@@ -108,6 +114,12 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 ```
 
 `.env` is ignored by Git. For a single-user local tool, `.env` is practical and auditable. A more secure option is storing the key in the macOS Keychain or exporting `OPENAI_API_KEY` only for the current shell session; that avoids a long-lived plaintext key file, but it is less convenient for non-technical users. Do not commit API keys.
+
+If AI classification fails with `CERTIFICATE_VERIFY_FAILED`, reinstall dependencies so Python uses the bundled CA certificates:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
 
 ## Tests
 

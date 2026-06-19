@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import ssl
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -130,13 +131,16 @@ class PayeeAIClassifier:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=45) as response:
+            with urllib.request.urlopen(request, timeout=45, context=create_ssl_context()) as response:
                 response_payload = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as error:
             detail = error.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"AI classification request failed: HTTP {error.code} {detail}") from error
         except urllib.error.URLError as error:
-            raise RuntimeError(f"AI classification request failed: {error.reason}") from error
+            reason = str(error.reason)
+            if "CERTIFICATE_VERIFY_FAILED" in reason:
+                reason = f"{reason}. Run `python3 -m pip install -r requirements.txt` to install certifi CA certificates."
+            raise RuntimeError(f"AI classification request failed: {reason}") from error
 
         content = response_payload["choices"][0]["message"]["content"]
         parsed = json.loads(content)
@@ -162,6 +166,14 @@ class PayeeAIClassifier:
                 )
             )
         return suggestions
+
+
+def create_ssl_context() -> ssl.SSLContext:
+    try:
+        import certifi
+    except ModuleNotFoundError:
+        return ssl.create_default_context()
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 def system_prompt() -> str:
