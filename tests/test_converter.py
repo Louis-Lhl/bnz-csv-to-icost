@@ -3,11 +3,13 @@ from __future__ import annotations
 import shutil
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 from zipfile import ZipFile
 
 from openpyxl import load_workbook
 
+from utiles.bnz_csv import AccountResolver, StatementCoverageError, csv_paths, validate_statement_coverage
 from utiles.ai_classifier import SuggestedRule, append_rules, likely_sensitive_payee
 from utiles.converter import BnzCsvToIcostConverter
 from utiles.models import Classification
@@ -28,7 +30,8 @@ class ConverterIntegrationTest(unittest.TestCase):
                 input_dir=input_dir,
                 output_dir=output_dir,
                 config_dir=config_dir,
-                output_month="2026-01",
+                date_from=date(2026, 1, 1),
+                date_to=date(2026, 1, 31),
             ).run()
 
             self.assertEqual(row_count, 4)
@@ -50,6 +53,14 @@ class ConverterIntegrationTest(unittest.TestCase):
 
             unknown_workbook = load_workbook(unknown_file, data_only=True, read_only=True)
             self.assertEqual(unknown_workbook.active.max_row, 1)
+
+    def test_statement_filename_coverage_is_required(self) -> None:
+        paths = csv_paths(Path("tests/data/bnz_statements"))
+        resolver = AccountResolver.from_csv(Path("tests/data/config/accounts.csv"))
+
+        validate_statement_coverage(paths, resolver, date(2026, 1, 1), date(2026, 1, 31))
+        with self.assertRaises(StatementCoverageError):
+            validate_statement_coverage(paths, resolver, date(2026, 1, 1), date(2026, 2, 1))
 
     def test_default_rules_are_loaded_from_csv(self) -> None:
         rules = RuleEngine.load(

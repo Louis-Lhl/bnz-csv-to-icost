@@ -2,30 +2,18 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
+from datetime import date, datetime
 from pathlib import Path
 
+from utiles.bnz_csv import StatementCoverageError
 from utiles.converter import BnzCsvToIcostConverter
-
-
-MONTH_ALIASES = {
-    "1月": "2026-01",
-    "2月": "2026-02",
-    "3月": "2026-03",
-    "4月": "2026-04",
-    "5月": "2026-05",
-    "6月": "2026-06",
-    "7月": "2026-07",
-    "8月": "2026-08",
-    "9月": "2026-09",
-    "10月": "2026-10",
-    "11月": "2026-11",
-    "12月": "2026-12",
-}
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Convert BNZ CSV statements to an iCost import workbook.")
-    parser.add_argument("month", help="Target month, for example 2026-06 or 6月.")
+    parser.add_argument("--from", dest="date_from", required=True, type=parse_iso_date, help="Start date, inclusive, in YYYY-MM-DD format.")
+    parser.add_argument("--to", dest="date_to", required=True, type=parse_iso_date, help="End date, inclusive, in YYYY-MM-DD format.")
     parser.add_argument("--input-dir", default="bnz_statements", help="Directory containing BNZ CSV files.")
     parser.add_argument("--output-dir", default="output", help="Directory for generated iCost workbooks.")
     parser.add_argument("--config-dir", default="config", help="Directory for local ignored account/rule configuration.")
@@ -34,8 +22,11 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def normalize_month(value: str) -> str:
-    return MONTH_ALIASES.get(value, value)
+def parse_iso_date(value: str) -> date:
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(f"Invalid date '{value}'. Use YYYY-MM-DD.") from error
 
 
 def configure_logging(debug: bool) -> None:
@@ -48,15 +39,24 @@ def configure_logging(debug: bool) -> None:
 def main() -> None:
     args = parse_args()
     configure_logging(args.debug)
-    month = normalize_month(args.month)
+    date_from = args.date_from
+    date_to = args.date_to
+    if date_from > date_to:
+        print(f"ERROR: --from must be on or before --to ({date_from} > {date_to})", file=sys.stderr)
+        raise SystemExit(2)
     converter = BnzCsvToIcostConverter(
         input_dir=Path(args.input_dir),
         output_dir=Path(args.output_dir),
         config_dir=Path(args.config_dir),
-        output_month=month,
+        date_from=date_from,
+        date_to=date_to,
         ai_classify=args.ai_classify,
     )
-    output_file, unknown_file, row_count, unknown_count = converter.run()
+    try:
+        output_file, unknown_file, row_count, unknown_count = converter.run()
+    except StatementCoverageError as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        raise SystemExit(2) from error
     print(f"Wrote {output_file} ({row_count} rows)")
     print(f"Wrote {unknown_file} ({unknown_count} unknown rows)")
 

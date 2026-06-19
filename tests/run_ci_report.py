@@ -19,7 +19,8 @@ JSON_FILE = REPORT_DIR / "results.json"
 
 COVERAGE_NOTES = [
     "Parses synthetic BNZ CSV exports from multiple accounts.",
-    "Filters transactions to the requested month.",
+    "Verifies BNZ statement filenames cover the requested date range.",
+    "Filters transactions to the requested inclusive date range.",
     "Detects matching internal transfers and exports one iCost transfer row.",
     "Classifies known merchants and local rule matches.",
     "Keeps AI classification opt-in and limited to Payee-only merchant strings.",

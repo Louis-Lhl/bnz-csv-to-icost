@@ -30,20 +30,22 @@ python -m pip install -r requirements.txt
 Put BNZ CSV exports in `bnz_statements/`, then run:
 
 ```bash
-python convert_bnz_csv_to_icost.py 2026-06
+python convert_bnz_csv_to_icost.py --from 2026-06-01 --to 2026-06-30
 ```
 
-Chinese month aliases are also supported:
-
-```bash
-python convert_bnz_csv_to_icost.py 6月
-```
-
-Generated files are written to `output/`:
+Both dates are inclusive. The converter scans BNZ CSV filenames before parsing rows and verifies that every discovered account covers the requested period. BNZ filenames must include an export range like:
 
 ```text
-output/2026-06.xlsx
-output/2026-06_unknown.xlsx
+Joint-Account-1JUN2026-to-30JUN2026.csv
+```
+
+If an account's files do not fully cover the requested date range, the program prints an error and exits without writing import files.
+
+Generated files are written to `output/` using the requested period:
+
+```text
+output/2026-06-01_to_2026-06-30.xlsx
+output/2026-06-01_to_2026-06-30_unknown.xlsx
 ```
 
 Fill `*_unknown.xlsx` when classification is unclear, then rerun the same command. Confirmed classifications are persisted to:
@@ -86,7 +88,7 @@ Do not commit real account numbers, names, or bank statements.
 AI classification is disabled by default. Enable it explicitly:
 
 ```bash
-python convert_bnz_csv_to_icost.py 2026-06 --ai-classify
+python convert_bnz_csv_to_icost.py --from 2026-06-01 --to 2026-06-30 --ai-classify
 ```
 
 Privacy boundary: the AI request only sends unique values from the BNZ `Payee` column for transactions that could not already be classified. It does not send full CSV rows, dates, amounts, account numbers, references, notes, balances, or generated workbooks. Likely personal names and ambiguous payees are skipped locally and stay in the unknown workbook.

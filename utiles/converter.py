@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import logging
 import shutil
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from .ai_classifier import PayeeAIClassifier
-from .bnz_csv import AccountResolver, csv_paths, parse_csv_transactions
+from .bnz_csv import AccountResolver, csv_paths, parse_csv_transactions, validate_statement_coverage
 from .models import Classification, transaction_key
 from .rules import RuleEngine, read_filled_unknown_workbook, read_manual_workbook
 from .transfers import mark_internal_transfers, should_export_transfer
@@ -23,15 +23,18 @@ class BnzCsvToIcostConverter:
         input_dir: Path,
         output_dir: Path,
         config_dir: Path,
-        output_month: str,
+        date_from: date,
+        date_to: date,
         ai_classify: bool = False,
     ) -> None:
         self.input_dir = input_dir
         self.output_dir = output_dir
         self.config_dir = config_dir
-        self.output_month = output_month
-        self.output_file = output_dir / f"{output_month}.xlsx"
-        self.unknown_file = output_dir / f"{output_month}_unknown.xlsx"
+        self.date_from = date_from
+        self.date_to = date_to
+        self.output_label = f"{date_from.isoformat()}_to_{date_to.isoformat()}"
+        self.output_file = output_dir / f"{self.output_label}.xlsx"
+        self.unknown_file = output_dir / f"{self.output_label}_unknown.xlsx"
         self.manual_file = output_dir / "csv_manual_classifications.xlsx"
         self.local_rules_file = config_dir / "local_rules.csv"
         self.default_rules_file = config_dir / "default_rules.csv"
@@ -40,6 +43,9 @@ class BnzCsvToIcostConverter:
         self.rule_engine = RuleEngine.load(self.local_rules_file, self.default_rules_file)
 
     def run(self) -> tuple[Path, Path, int, int]:
+        paths = csv_paths(self.input_dir)
+        validate_statement_coverage(paths, self.account_resolver, self.date_from, self.date_to)
+
         self.output_dir.mkdir(parents=True, exist_ok=True)
         manual = read_manual_workbook(self.manual_file)
         filled_unknown = read_filled_unknown_workbook(self.unknown_file)
@@ -48,10 +54,10 @@ class BnzCsvToIcostConverter:
             self._persist_manual(manual)
 
         transactions = []
-        for path in csv_paths(self.input_dir):
-            transactions.extend(parse_csv_transactions(path, self.output_month, self.account_resolver))
+        for path in paths:
+            transactions.extend(parse_csv_transactions(path, self.date_from, self.date_to, self.account_resolver))
         mark_internal_transfers(transactions)
-        LOGGER.info("Loaded %d transactions for %s", len(transactions), self.output_month)
+        LOGGER.info("Loaded %d transactions for %s to %s", len(transactions), self.date_from, self.date_to)
         if self.ai_classify:
             added = PayeeAIClassifier(Path(".env"), self.local_rules_file).classify_and_save(
                 [tx.payee for tx in self._unknown_candidates(transactions, manual)]
