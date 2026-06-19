@@ -1,0 +1,3 @@
+Date,Amount,Payee,Particulars,Code,Reference,Tran Type,This Party Account,Other Party Account,Serial,Transaction Code,Batch Number,Originating Bank/Branch,Processed Date
+02/01/26,100.00,Main Account,,,INTERNET XFR,FT,22-2222-2222222-00,11-1111-1111111-00,,"50",0000,"22-2222",02/01/26
+04/01/26,-1000.00,TERM PLACEMENT,TEST,00001,,TD,22-2222-2222222-00,22-2222-3333333-01,,"36",0104,"22-2222",04/01/26
