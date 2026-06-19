@@ -1,0 +1,22 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Private raw data and generated artifacts
+bnz_statements/**
+!bnz_statements/.gitkeep
+output/**
+!output/.gitkeep
+icost_statements/**
+config/*.csv
+*.png
+*.xlsx
+
+# Local environment
+.env
+.env.*
