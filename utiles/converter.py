@@ -5,7 +5,7 @@ import shutil
 from datetime import date, datetime
 from pathlib import Path
 
-from .ai_classifier import PayeeAIClassifier
+from .ai_classifier import AITransactionContext, PayeeAIClassifier
 from .bnz_csv import AccountResolver, csv_paths, parse_csv_transactions, validate_statement_coverage
 from .models import Classification, transaction_key
 from .rules import RuleEngine, read_filled_unknown_workbook, read_manual_workbook
@@ -60,7 +60,7 @@ class BnzCsvToIcostConverter:
         LOGGER.info("Loaded %d transactions for %s to %s", len(transactions), self.date_from, self.date_to)
         if self.ai_classify:
             added = PayeeAIClassifier(Path(".env"), self.local_rules_file).classify_and_save(
-                [tx.payee for tx in self._unknown_candidates(transactions, manual)]
+                [ai_context(tx) for tx in self._unknown_candidates(transactions, manual)]
             )
             if added:
                 LOGGER.info("Added %d AI classification rules to %s", added, self.local_rules_file)
@@ -101,7 +101,7 @@ class BnzCsvToIcostConverter:
             if manual.get(transaction_key(tx)) or self.rule_engine.classify(tx):
                 continue
             candidates.append(tx)
-        LOGGER.debug("Prepared %d unknown transaction payees for optional AI classification", len(candidates))
+        LOGGER.debug("Prepared %d unknown transaction contexts for optional AI classification", len(candidates))
         return candidates
 
     def _persist_manual(self, manual: dict[tuple[str, int, str, str, str], Classification]) -> None:
@@ -129,3 +129,14 @@ class BnzCsvToIcostConverter:
         backup_dir.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         shutil.copy2(path, backup_dir / f"{path.stem}_{stamp}{path.suffix}")
+
+
+def ai_context(tx) -> AITransactionContext:
+    return AITransactionContext(
+        payee=tx.payee,
+        particulars=tx.raw_particulars,
+        code=tx.code,
+        reference=tx.reference,
+        tran_type=tx.bank_type,
+        direction=tx.direction,
+    )

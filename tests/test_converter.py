@@ -10,7 +10,7 @@ from zipfile import ZipFile
 from openpyxl import load_workbook
 
 from utiles.bnz_csv import AccountResolver, StatementCoverageError, csv_paths, validate_statement_coverage
-from utiles.ai_classifier import SuggestedRule, append_rules, likely_sensitive_payee, normalize_ai_classification
+from utiles.ai_classifier import AITransactionContext, SuggestedRule, append_rules, dedupe_contexts, likely_sensitive_payee, normalize_ai_classification
 from utiles.converter import BnzCsvToIcostConverter
 from utiles.models import Classification
 from utiles.rules import RuleEngine
@@ -82,6 +82,23 @@ class ConverterIntegrationTest(unittest.TestCase):
 
         self.assertEqual(normalize_ai_classification("支出", "生活费", "饮品"), Classification("支出", "生活费", "外食"))
         self.assertEqual(normalize_ai_classification("支出", "旅游", "门票/活动"), Classification("支出", "旅游", ""))
+        self.assertEqual(normalize_ai_classification("收入", "旅游", ""), Classification("收入", "旅游", ""))
+
+        context = AITransactionContext(
+            payee="John Smith",
+            particulars="Lunch",
+            code="Cafe",
+            reference="",
+            tran_type="BP",
+            direction="收入",
+        )
+        self.assertEqual(context.to_payload()["payee"], "[private_payee]")
+        self.assertEqual(context.to_payload()["particulars"], "Lunch")
+        self.assertEqual(len(dedupe_contexts([context, context])), 1)
+        self.assertEqual(
+            dedupe_contexts([AITransactionContext("John Smith", "", "", "", "BP", "收入")]),
+            [],
+        )
 
         with tempfile.TemporaryDirectory() as tmpdir:
             rules_file = Path(tmpdir) / "local_rules.csv"

@@ -97,7 +97,7 @@ AI classification is disabled by default. Enable it explicitly:
 python convert_bnz_csv_to_icost.py --from 2026-06-01 --to 2026-06-30 --ai-classify
 ```
 
-Privacy boundary: the AI request only sends unique values from the BNZ `Payee` column for transactions that could not already be classified. It does not send full CSV rows, dates, amounts, account numbers, references, notes, balances, or generated workbooks. Likely personal names and ambiguous payees are skipped locally and stay in the unknown workbook.
+Privacy boundary: the AI request only sends selected context fields from transactions that could not already be classified: `Payee`, `Particulars`, `Code`, `Reference`, BNZ transaction type, and income/expense direction. It does not send full CSV rows, dates, amounts, account names, account numbers, balances, generated workbooks, or existing local rule files. Likely personal payees are masked as `[private_payee]`, while non-accounting memo fields such as `Lunch` can still be used to classify reimbursements or shared costs.
 
 Create a local `.env` from the template:
 

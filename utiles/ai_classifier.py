@@ -41,6 +41,33 @@ class SuggestedRule:
     classification: Classification
     reason: str
     confidence: float
+    direction: str = ""
+    bank_type: str = ""
+
+
+@dataclass(frozen=True)
+class AITransactionContext:
+    payee: str
+    particulars: str
+    code: str
+    reference: str
+    tran_type: str
+    direction: str
+
+    @property
+    def match_source(self) -> str:
+        return self.payee or self.particulars or self.code or self.reference
+
+    def to_payload(self) -> dict[str, str]:
+        payee = "[private_payee]" if likely_sensitive_payee(self.payee) else self.payee
+        return {
+            "payee": payee,
+            "particulars": self.particulars,
+            "code": self.code,
+            "reference": self.reference,
+            "tran_type": self.tran_type,
+            "direction": self.direction,
+        }
 
 
 def load_dotenv(path: Path) -> None:
@@ -77,16 +104,16 @@ class PayeeAIClassifier:
         self.base_url = os.environ.get("OPENAI_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
         self.model = os.environ.get("OPENAI_MODEL", DEFAULT_MODEL)
 
-    def classify_and_save(self, payees: list[str]) -> int:
-        candidates = sorted({payee.strip() for payee in payees if payee.strip() and not likely_sensitive_payee(payee)})
+    def classify_and_save(self, contexts: list[AITransactionContext]) -> int:
+        candidates = dedupe_contexts(contexts)
         if not candidates:
-            LOGGER.info("AI classification skipped: no non-sensitive payee candidates")
+            LOGGER.info("AI classification skipped: no useful transaction context candidates")
             return 0
         if not self.api_key:
             LOGGER.warning("AI classification skipped: OPENAI_API_KEY is not set")
             return 0
 
-        LOGGER.info("Sending %d unique payee strings to AI classification", len(candidates))
+        LOGGER.info("Sending %d unique transaction contexts to AI classification", len(candidates))
         suggestions = self._request_suggestions(candidates)
         accepted = [
             suggestion
@@ -96,13 +123,13 @@ class PayeeAIClassifier:
         LOGGER.info("AI returned %d suggestions; accepted %d", len(suggestions), len(accepted))
         return append_rules(self.local_rules_file, accepted)
 
-    def _request_suggestions(self, payees: list[str]) -> list[SuggestedRule]:
+    def _request_suggestions(self, contexts: list[AITransactionContext]) -> list[SuggestedRule]:
         payload = {
             "model": self.model,
             "response_format": {"type": "json_object"},
             "messages": [
                 {"role": "system", "content": system_prompt()},
-                {"role": "user", "content": json.dumps({"payees": payees}, ensure_ascii=False)},
+                {"role": "user", "content": json.dumps({"transactions": [context.to_payload() for context in contexts]}, ensure_ascii=False)},
             ],
         }
         request = urllib.request.Request(
@@ -147,9 +174,36 @@ class PayeeAIClassifier:
                     classification=classification,
                     reason=str(item.get("reason") or "AI suggested merchant classification").strip(),
                     confidence=confidence,
+                    direction=matched_context_value(match_text, contexts, "direction"),
+                    bank_type=matched_context_value(match_text, contexts, "tran_type"),
                 )
             )
         return suggestions
+
+
+def matched_context_value(match_text: str, contexts: list[AITransactionContext], field: str) -> str:
+    needle = match_text.strip().upper()
+    if not needle:
+        return ""
+    for context in contexts:
+        payload = context.to_payload()
+        for source_field in ["payee", "particulars", "code", "reference"]:
+            if needle in payload[source_field].upper():
+                return payload[field]
+    return ""
+
+
+def dedupe_contexts(contexts: list[AITransactionContext]) -> list[AITransactionContext]:
+    unique: dict[tuple[str, str, str, str, str, str], AITransactionContext] = {}
+    for context in contexts:
+        if not context.match_source.strip():
+            continue
+        payload = context.to_payload()
+        if payload["payee"] == "[private_payee]" and not any(payload[field].strip() for field in ["particulars", "code", "reference"]):
+            continue
+        key = tuple(payload[field].strip().upper() for field in ["payee", "particulars", "code", "reference", "tran_type", "direction"])
+        unique.setdefault(key, context)
+    return sorted(unique.values(), key=lambda item: item.match_source.upper())
 
 
 def normalize_ai_classification(tx_type: str, primary: str, secondary: str) -> Classification:
@@ -170,10 +224,18 @@ def create_ssl_context() -> ssl.SSLContext:
 
 def system_prompt() -> str:
     return (
-        "You classify New Zealand bank transaction payee strings for iCost personal finance import. "
-        "You receive only payee strings, never full bank rows. Return JSON only, with key 'rules'. "
-        "For each known merchant, return match_text, 类型, 一级分类, 二级分类, confidence, reason. "
-        "Do not classify personal names, ambiguous payees, bank transfers, or unknown merchants. "
+        "You classify New Zealand bank transaction context snippets for iCost personal finance import. "
+        "You receive selected fields only: payee, particulars, code, reference, tran_type, direction. "
+        "You never receive dates, amounts, account names, account numbers, balances, or full CSV rows. "
+        "Return JSON only, with key 'rules'. "
+        "For each clear merchant or clear reimbursement purpose, return match_text, 类型, 一级分类, 二级分类, confidence, reason. "
+        "Use match_text as the shortest stable text that appears in one of payee/particulars/code/reference. "
+        "Do not classify personal names by name alone, ambiguous payees, bank transfers, or unknown merchants. "
+        "If payee is [private_payee], use only particulars/code/reference/tran_type/direction to infer purpose. "
+        "Example: direction=收入 with particulars/code/reference containing Lunch, Dinner, Cafe, Restaurant, Food, Meal, Brunch "
+        "usually means reimbursement or bill split and can be 收入/生活费/外食. "
+        "Example: direction=收入 with particulars/code/reference containing Hotel, Airbnb, Accommodation, Trip, Travel "
+        "can be 收入/旅游 when it is a shared travel cost reimbursement. "
         "For those, omit them from rules. Use only these 类型 values: 支出, 收入. "
         "Do not invent secondary categories. 二级分类 may only be one of: "
         "生活费/三餐, 生活费/零食, 生活费/水果, 生活费/蔬菜, 生活费/外食, 住房/房租, 住房/水电费. "
@@ -207,8 +269,8 @@ def append_rules(path: Path, suggestions: list[SuggestedRule]) -> int:
                 "二级分类": suggestion.classification.secondary,
                 "账户2": "",
                 "备注规则": f"AI: {suggestion.reason} (confidence={suggestion.confidence:.2f})",
-                "BNZ方向": "",
-                "BNZ类型": "",
+                "BNZ方向": suggestion.direction,
+                "BNZ类型": suggestion.bank_type,
                 "金额": "",
                 "优先级": AI_RULE_PRIORITY,
             }

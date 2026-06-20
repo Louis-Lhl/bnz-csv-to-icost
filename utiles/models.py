@@ -34,6 +34,9 @@ class Transaction:
     amount: Decimal
     direction: str
     payee: str = ""
+    raw_particulars: str = ""
+    code: str = ""
+    reference: str = ""
     this_account: str = ""
     other_account: str = ""
     transaction_code: str = ""
