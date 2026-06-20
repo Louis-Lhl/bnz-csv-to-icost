@@ -10,7 +10,7 @@ from zipfile import ZipFile
 from openpyxl import load_workbook
 
 from utiles.bnz_csv import AccountResolver, StatementCoverageError, csv_paths, validate_statement_coverage
-from utiles.ai_classifier import SuggestedRule, append_rules, likely_sensitive_payee
+from utiles.ai_classifier import SuggestedRule, append_rules, likely_sensitive_payee, normalize_ai_classification
 from utiles.converter import BnzCsvToIcostConverter
 from utiles.models import Classification
 from utiles.rules import RuleEngine
@@ -73,7 +73,15 @@ class ConverterIntegrationTest(unittest.TestCase):
     def test_ai_rule_storage_and_privacy_filter(self) -> None:
         self.assertTrue(likely_sensitive_payee("PERSON,NAME"))
         self.assertTrue(likely_sensitive_payee("John Smith"))
+        self.assertTrue(likely_sensitive_payee("Person One&Person Two"))
         self.assertFalse(likely_sensitive_payee("PAK N SAVE"))
+        self.assertFalse(likely_sensitive_payee("WASHWORLD WAIRAU"))
+        self.assertFalse(likely_sensitive_payee("SUBWAY SUNNYBRAE"))
+        self.assertFalse(likely_sensitive_payee("GetYourGuide Tickets"))
+        self.assertFalse(likely_sensitive_payee("CHARLIE'S TEA"))
+
+        self.assertEqual(normalize_ai_classification("支出", "生活费", "饮品"), Classification("支出", "生活费", "外食"))
+        self.assertEqual(normalize_ai_classification("支出", "旅游", "门票/活动"), Classification("支出", "旅游", ""))
 
         with tempfile.TemporaryDirectory() as tmpdir:
             rules_file = Path(tmpdir) / "local_rules.csv"

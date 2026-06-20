@@ -21,6 +21,18 @@ AI_RULE_PRIORITY = "180"
 MIN_CONFIDENCE = 0.75
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
+AI_ALLOWED_SECONDARIES = {
+    "生活费": {"三餐", "零食", "水果", "蔬菜", "外食"},
+    "住房": {"房租", "水电费"},
+}
+AI_SECONDARY_ALIASES = {
+    "饮品": ("生活费", "外食"),
+    "饮料": ("生活费", "外食"),
+    "咖啡": ("生活费", "外食"),
+    "奶茶": ("生活费", "外食"),
+    "快餐": ("生活费", "外食"),
+    "餐饮": ("生活费", "外食"),
+}
 
 
 @dataclass(frozen=True)
@@ -49,37 +61,10 @@ def likely_sensitive_payee(payee: str) -> bool:
     upper = text.upper()
     if not text:
         return True
-    if "," in text or " GIFT" in upper or upper.endswith(" GIFT"):
+    if "," in text or "&" in text or " GIFT" in upper or upper.endswith(" GIFT"):
         return True
     tokens = re.findall(r"[A-Za-z]+", text)
-    merchant_markers = {
-        "AIR",
-        "APPLE",
-        "BAKERY",
-        "BP",
-        "CAFE",
-        "CHEMIST",
-        "GITHUB",
-        "GOOGLE",
-        "KFC",
-        "MART",
-        "MCDONALD",
-        "NEW",
-        "NZ",
-        "PAK",
-        "POWER",
-        "POWERSHOP",
-        "RESTAURANT",
-        "SAVE",
-        "SHOP",
-        "STORE",
-        "TRANSPORT",
-        "UBER",
-        "WAREHOUSE",
-        "WOOLWORTHS",
-        "WORLD",
-    }
-    if 2 <= len(tokens) <= 4 and not any(token.upper() in merchant_markers for token in tokens):
+    if 2 <= len(tokens) <= 4 and all(token[:1].isupper() and token[1:].islower() for token in tokens):
         return True
     return False
 
@@ -151,7 +136,7 @@ class PayeeAIClassifier:
             if not match_text or not tx_type or not primary:
                 continue
             confidence = float(item.get("confidence") or 0)
-            classification = Classification(
+            classification = normalize_ai_classification(
                 tx_type=tx_type,
                 primary=primary,
                 secondary=str(item.get("二级分类") or "").strip(),
@@ -165,6 +150,14 @@ class PayeeAIClassifier:
                 )
             )
         return suggestions
+
+
+def normalize_ai_classification(tx_type: str, primary: str, secondary: str) -> Classification:
+    if secondary in AI_SECONDARY_ALIASES:
+        primary, secondary = AI_SECONDARY_ALIASES[secondary]
+    if secondary and secondary not in AI_ALLOWED_SECONDARIES.get(primary, set()):
+        secondary = ""
+    return Classification(tx_type=tx_type, primary=primary, secondary=secondary)
 
 
 def create_ssl_context() -> ssl.SSLContext:
@@ -182,6 +175,9 @@ def system_prompt() -> str:
         "For each known merchant, return match_text, 类型, 一级分类, 二级分类, confidence, reason. "
         "Do not classify personal names, ambiguous payees, bank transfers, or unknown merchants. "
         "For those, omit them from rules. Use only these 类型 values: 支出, 收入. "
+        "Do not invent secondary categories. 二级分类 may only be one of: "
+        "生活费/三餐, 生活费/零食, 生活费/水果, 生活费/蔬菜, 生活费/外食, 住房/房租, 住房/水电费. "
+        "For all other primary categories, leave 二级分类 empty. "
         f"支出一级分类 allowed: {sorted(EXPENSE_CATEGORIES)}. "
         f"收入一级分类 allowed: {sorted(INCOME_CATEGORIES)}. "
         "Examples: PAK N SAVE => 支出/生活费; WOOLWORTHS => 支出/生活费; "
