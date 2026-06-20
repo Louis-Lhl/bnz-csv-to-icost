@@ -114,7 +114,6 @@ class PayeeAIClassifier:
     def _request_suggestions(self, payees: list[str]) -> list[SuggestedRule]:
         payload = {
             "model": self.model,
-            "temperature": 0,
             "response_format": {"type": "json_object"},
             "messages": [
                 {"role": "system", "content": system_prompt()},
