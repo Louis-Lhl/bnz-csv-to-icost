@@ -12,7 +12,7 @@ from openpyxl import load_workbook
 from utiles.bnz_csv import AccountResolver, StatementCoverageError, csv_paths, validate_statement_coverage
 from utiles.ai_classifier import AITransactionContext, SuggestedRule, append_rules, dedupe_contexts, likely_sensitive_payee, normalize_ai_classification
 from utiles.converter import BnzCsvToIcostConverter
-from utiles.models import Classification
+from utiles.models import Classification, Transaction
 from utiles.rules import RuleEngine
 
 
@@ -69,6 +69,38 @@ class ConverterIntegrationTest(unittest.TestCase):
         )
 
         self.assertTrue(any(rule.match_text == "PAK N SAVE" for rule in rules.rules))
+        self.assertEqual(
+            rules.classify(
+                Transaction(
+                    date_text="2025年12月30日 12:00:00",
+                    date_sort_key="2025-12-30",
+                    particulars="MS H LI lunch",
+                    account="Main Account",
+                    bank_type="DC",
+                    amount=70,
+                    direction="收入",
+                    payee="MS H LI",
+                    raw_particulars="lunch",
+                )
+            ),
+            Classification("收入", "生活费", "外食"),
+        )
+        self.assertEqual(
+            rules.classify(
+                Transaction(
+                    date_text="2025年12月30日 12:00:00",
+                    date_sort_key="2025-12-30",
+                    particulars="Friend Hotel split",
+                    account="Main Account",
+                    bank_type="BP",
+                    amount=100,
+                    direction="收入",
+                    payee="Friend",
+                    reference="Hotel split",
+                )
+            ),
+            Classification("收入", "旅游"),
+        )
 
     def test_ai_rule_storage_and_privacy_filter(self) -> None:
         self.assertTrue(likely_sensitive_payee("PERSON,NAME"))

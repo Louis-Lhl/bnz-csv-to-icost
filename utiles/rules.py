@@ -50,6 +50,8 @@ SHORT_CATEGORY_MAP = {
     "蔬菜": ("生活费", "蔬菜"),
     "房租": ("住房", "房租"),
 }
+MEAL_REIMBURSEMENT_KEYWORDS = {"LUNCH", "DINNER", "MEAL", "FOOD", "CAFE", "BRUNCH", "RESTAURANT"}
+TRAVEL_REIMBURSEMENT_KEYWORDS = {"HOTEL", "AIRBNB", "ACCOMMODATION", "TRAVEL", "TRIP"}
 
 
 @dataclass(frozen=True)
@@ -89,6 +91,9 @@ class RuleEngine:
         td = classify_term_deposit(tx)
         if td:
             return td
+        reimbursement = classify_income_reimbursement(tx)
+        if reimbursement:
+            return reimbursement
         if tx.direction == "收入" and "APPLE ONE" in tx.particulars.upper():
             return Classification("收入", "应用软件")
         if tx.direction == "支出" and tx.bank_type in {"BP", "IB", "DC", "AP"} and "GIFT" in tx.particulars.upper():
@@ -101,6 +106,17 @@ class RuleEngine:
 
 def load_local_rules(path: Path) -> list[Rule]:
     return load_rule_csv(path, default_priority=200)
+
+
+def classify_income_reimbursement(tx: Transaction) -> Classification | None:
+    if tx.direction != "收入":
+        return None
+    text = " ".join([tx.payee, tx.raw_particulars, tx.code, tx.reference, tx.particulars]).upper()
+    if any(keyword in text for keyword in MEAL_REIMBURSEMENT_KEYWORDS):
+        return Classification("收入", "生活费", "外食")
+    if any(keyword in text for keyword in TRAVEL_REIMBURSEMENT_KEYWORDS):
+        return Classification("收入", "旅游")
+    return None
 
 
 def load_rule_csv(path: Path, default_priority: int) -> list[Rule]:
