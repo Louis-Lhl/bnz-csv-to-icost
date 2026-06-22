@@ -115,6 +115,7 @@ class ConverterIntegrationTest(unittest.TestCase):
         self.assertEqual(normalize_ai_classification("支出", "生活费", "饮品"), Classification("支出", "生活费", "外食"))
         self.assertEqual(normalize_ai_classification("支出", "旅游", "门票/活动"), Classification("支出", "旅游", ""))
         self.assertEqual(normalize_ai_classification("收入", "旅游", ""), Classification("收入", "旅游", ""))
+        self.assertEqual(normalize_ai_classification("收入", "购物", ""), Classification("收入", "购物", ""))
 
         context = AITransactionContext(
             payee="John Smith",
