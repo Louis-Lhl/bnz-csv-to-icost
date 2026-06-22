@@ -1,2 +1,4 @@
 match_text,类型,一级分类,二级分类,账户2,备注规则,BNZ方向,BNZ类型,金额,优先级
 PAK N SAVE,支出,生活费,,,,,,,100
+TAX INTEREST PAYMENT,支出,其他,,,,支出,TD,,120
+GROSS INTEREST PAYMENT,收入,投资,,,,收入,TD,,110
