@@ -60,6 +60,35 @@ Fill `*_unknown.xlsx` when classification is unclear, then rerun the same comman
 output/csv_manual_classifications.xlsx
 ```
 
+## Screenshot Workflow
+
+When asking Codex to convert a screenshot to an iCost bill, Codex should first ask which screenshot to use. The screenshot content should then be transcribed into a small private CSV with this shape:
+
+```csv
+Date,Details,Amount
+1 Jun 2026,Tax Interest Payment 00089369602 00004 TD TAX,-$4.92
+1 Jun 2026,Gross Interest Payment 00089369602 00004 TD INTEREST,$28.16
+```
+
+Normalize that extracted screenshot CSV into the standard BNZ CSV format:
+
+```bash
+python3 convert_bnz_screenshot_to_csv.py \
+  --input bnz_statements/screenshot_extract.csv \
+  --account 1年定期
+```
+
+The generated CSV is written to `bnz_statements/screenshot_imports/` with a BNZ-compatible filename and columns. Then use the normal converter:
+
+```bash
+python3 convert_bnz_csv_to_icost.py \
+  --input-dir bnz_statements/screenshot_imports \
+  --from 2026-06-01 \
+  --to 2026-06-01
+```
+
+This keeps the final iCost workbook generation in one place: `convert_bnz_csv_to_icost.py`.
+
 ## Classification Rules
 
 The converter loads rules in this order:

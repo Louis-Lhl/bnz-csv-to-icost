@@ -14,6 +14,7 @@ from utiles.ai_classifier import AITransactionContext, SuggestedRule, append_rul
 from utiles.converter import BnzCsvToIcostConverter
 from utiles.models import Classification
 from utiles.rules import RuleEngine
+from convert_bnz_screenshot_to_csv import bnz_rows, output_path, read_screenshot_csv, write_bnz_csv
 
 
 class ConverterIntegrationTest(unittest.TestCase):
@@ -116,6 +117,48 @@ class ConverterIntegrationTest(unittest.TestCase):
 
             self.assertEqual(added, 1)
             self.assertIn("KFC", rules_file.read_text(encoding="utf-8-sig"))
+
+    def test_screenshot_csv_is_normalized_then_converted_by_main_converter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source = root / "term_deposit_screenshot.csv"
+            input_dir = root / "bnz_statements"
+            output_dir = root / "output"
+            config_dir = root / "config"
+            shutil.copytree(Path("tests/data/config"), config_dir)
+            source.write_text(
+                "\n".join(
+                    [
+                        "Date,Details,Amount",
+                        "1 Jun 2026,Tax Interest Payment 00089369602 00004 TD TAX,-$4.92",
+                        "1 Jun 2026,Gross Interest Payment 00089369602 00004 TD INTEREST,$28.16",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            screenshot_rows = read_screenshot_csv(source)
+            normalized_csv = output_path(input_dir, "1年定期", screenshot_rows)
+            write_bnz_csv(normalized_csv, bnz_rows(screenshot_rows, payee="BNZ SCREENSHOT", tran_type="TD"))
+
+            self.assertEqual(normalized_csv.name, "1年定期-1JUN2026-to-1JUN2026.csv")
+
+            output_file, unknown_file, row_count, unknown_count = BnzCsvToIcostConverter(
+                input_dir=input_dir,
+                output_dir=output_dir,
+                config_dir=config_dir,
+                date_from=date(2026, 6, 1),
+                date_to=date(2026, 6, 1),
+            ).run()
+
+            workbook = load_workbook(output_file, data_only=True, read_only=True)
+            rows = list(workbook.active.iter_rows(values_only=True))
+            self.assertTrue(unknown_file.exists())
+
+        self.assertEqual(row_count, 2)
+        self.assertEqual(unknown_count, 0)
+        self.assertIn(("2026年06月01日 12:00:00", "收入", 28.16, "投资", None, "1年定期"), [row[:6] for row in rows[1:]])
+        self.assertIn(("2026年06月01日 12:00:00", "支出", 4.92, "其他", None, "1年定期"), [row[:6] for row in rows[1:]])
 
 
 if __name__ == "__main__":
